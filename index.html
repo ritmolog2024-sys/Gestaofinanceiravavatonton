@@ -580,129 +580,104 @@ function fecharScanner() {
 }
 
 async function preencherDadosDaUrl(urlNota) {
-  // Reseta campos
-  document.getElementById('tx_emission_date').value  = hoje();
-  document.getElementById('tx_merchant_name').value  = '';
-  document.getElementById('tx_amount_paid').value    = '';
-  document.getElementById('tx_cnpj').value           = '';
-  document.getElementById('tx_cpf').value            = '';
-  document.getElementById('tx_invoice_number').value = '';
-  document.getElementById('tx_invoice_series').value = '';
-  document.getElementById('tx_total_value').value    = '0';
-  document.getElementById('tx_amount_due').value     = '0';
-  document.getElementById('tx_merchant_address').value = '';
+  const set = (id, v) => { document.getElementById(id).value = v; };
+  set('tx_emission_date', hoje());
+  set('tx_merchant_name',''); set('tx_amount_paid',''); set('tx_cnpj','');
+  set('tx_cpf',''); set('tx_invoice_number',''); set('tx_invoice_series','');
+  set('tx_total_value','0'); set('tx_amount_due','0'); set('tx_merchant_address','');
+  set('tx_total_items','0'); set('tx_discounts','0');
 
-  // 1) Extrai o que der da URL (fallback rápido)
-  try {
-    const p = new URL(urlNota).searchParams;
-    const vNF = p.get('vNF') || p.get('valor') || p.get('v') || '';
-    if (vNF) { const v = parseFloat(vNF).toFixed(2); document.getElementById('tx_total_value').value=v; document.getElementById('tx_amount_due').value=v; document.getElementById('tx_amount_paid').value=v; }
-    const nNF = p.get('nNF') || p.get('n') || ''; if(nNF) document.getElementById('tx_invoice_number').value=nNF;
-    const cnpj = p.get('cnpj') || p.get('c') || ''; if(cnpj) document.getElementById('tx_cnpj').value=cnpj;
-    const cpf = p.get('cpfCons') || p.get('cpf') || ''; if(cpf) document.getElementById('tx_cpf').value=cpf;
-    const serie = p.get('serie') || p.get('s') || ''; if(serie) document.getElementById('tx_invoice_series').value=serie;
-  } catch(e) {}
-
-  // 2) Busca a página da nota via proxy CORS para extrair nome do estabelecimento, valor, data etc.
   toast('Buscando dados da nota...', 'info');
+
   try {
-    const proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(urlNota);
-    const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(12000) });
-    const json = await res.json();
-    const html = json.contents || '';
-
-    if (html) {
-      const dados = extrairDadosNFCe(html);
-
-      if (dados.nomeEmissor)  document.getElementById('tx_merchant_name').value  = dados.nomeEmissor;
-      if (dados.cnpj)         document.getElementById('tx_cnpj').value           = dados.cnpj;
-      if (dados.endereco)     document.getElementById('tx_merchant_address').value = dados.endereco;
-      if (dados.numeroNota)   document.getElementById('tx_invoice_number').value  = dados.numeroNota;
-      if (dados.serie)        document.getElementById('tx_invoice_series').value   = dados.serie;
-      if (dados.dataEmissao)  document.getElementById('tx_emission_date').value   = dados.dataEmissao;
-      if (dados.valorTotal) {
-        document.getElementById('tx_total_value').value  = dados.valorTotal;
-        document.getElementById('tx_amount_due').value   = dados.valorTotal;
-        document.getElementById('tx_amount_paid').value  = dados.valorTotal;
-      }
-      if (dados.totalItens)   document.getElementById('tx_total_items').value = dados.totalItens;
-      if (dados.desconto)     document.getElementById('tx_discounts').value   = dados.desconto;
-
-      toast('Dados da nota carregados ✓', 'success');
-    } else {
-      toast('QR Code lido. Preencha os dados manualmente.', 'info');
+    let html = '';
+    const proxies = [
+      'https://api.allorigins.win/get?url=' + encodeURIComponent(urlNota),
+      'https://corsproxy.io/?' + encodeURIComponent(urlNota),
+    ];
+    for (const proxy of proxies) {
+      try {
+        const res = await fetch(proxy, { signal: AbortSignal.timeout(12000) });
+        if (proxy.includes('allorigins')) {
+          const j = await res.json(); html = j.contents || '';
+        } else {
+          html = await res.text();
+        }
+        if (html && html.length > 200) break;
+      } catch(e) { continue; }
     }
+
+    if (!html || html.length < 200) {
+      toast('Nao foi possivel buscar a nota. Preencha manualmente.', 'info');
+      openModal('modalAddTx'); return;
+    }
+
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const txt = el => el ? el.textContent.trim() : '';
+    const sel = q => doc.querySelector(q);
+    const all = q => [...doc.querySelectorAll(q)];
+    const parseBR = s => { if(!s)return null; const v=s.replace(/\./g,'').replace(',','.'); return isNaN(parseFloat(v))?null:parseFloat(v).toFixed(2); };
+
+    // Nome emissor
+    let nome = txt(sel('#nomeEmitente')) || txt(sel('.NomeEmitente')) || '';
+    if (!nome) {
+      for (const el of all('b, strong, h1, h2, .txtTopo, [class*="emitente" i], [class*="empresa" i]')) {
+        const t = txt(el);
+        if (t.length > 8 && t.length < 120 && !/CNPJ|CPF|Rua|Av\.|NFC|Nota|Emiss|Imprimir/i.test(t)) { nome = t; break; }
+      }
+    }
+    if (!nome) {
+      const m = html.match(/>([ \w\s&\.\/'\-]{8,80})<[^>]*>\s*(?:CNPJ|cnpj)/i);
+      if (m) nome = m[1].trim();
+    }
+    if (nome) set('tx_merchant_name', nome);
+
+    // CNPJ
+    const cnpjRaw = html.match(/CNPJ[:\s]*(\d{2}[\. ]?\d{3}[\. ]?\d{3}[\/]?\d{4}[-]?\d{2})/i);
+    if (cnpjRaw) { const c=cnpjRaw[1].replace(/\D/g,''); set('tx_cnpj',c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5')); }
+
+    // Endereco
+    let end = txt(sel('#enderEmitente')) || txt(sel('.enderEmitente')) || '';
+    if (!end) { const m=html.match(/((?:RUA|AV(?:ENIDA)?|AL(?:AMEDA)?|ROD(?:OVIA)?|PC|PRACA|TRAV)\b[^<\n]{6,120})/i); if(m)end=m[1].trim(); }
+    if (end) set('tx_merchant_address', end);
+
+    // CPF consumidor
+    const cpfM = html.match(/CPF[:\s]*([\d]{3}[\. ]?[\d]{3}[\. ]?[\d]{3}[-]?[\d]{2})/);
+    if (cpfM) set('tx_cpf', cpfM[1].trim());
+
+    // Numero, Serie, Data — padrao SEFAZ: "Numero: 626131 Serie: 1 Emissao: 23/06/2026"
+    const infoM = html.match(/N[u\u00fa]mero[:\s]*([\d]+)[^\d]*S[e\u00e9]rie[:\s]*([\d]+)[^\d]*Emiss[a\u00e3]o[:\s]*([\d]{2}\/[\d]{2}\/[\d]{4})/i);
+    if (infoM) {
+      set('tx_invoice_number', infoM[1]);
+      set('tx_invoice_series', infoM[2]);
+      const [dd,mm,aaaa] = infoM[3].split('/');
+      set('tx_emission_date', aaaa+'-'+mm+'-'+dd);
+    } else {
+      const nM=html.match(/N[u\u00fa]mero[:\s]*([\d]+)/i); if(nM)set('tx_invoice_number',nM[1]);
+      const sM=html.match(/S[e\u00e9]rie[:\s]*([\d]+)/i); if(sM)set('tx_invoice_series',sM[1]);
+      const dM=html.match(/Emiss[a\u00e3]o[:\s]*([\d]{2}\/[\d]{2}\/[\d]{4})/i);
+      if(dM){const[dd,mm,aaaa]=dM[1].split('/');set('tx_emission_date',aaaa+'-'+mm+'-'+dd);}
+    }
+
+    // Totais
+    const itM=html.match(/Qtd\.?\s*total\s*de\s*itens[:\s]*([\d]+)/i); if(itM)set('tx_total_items',itM[1]);
+    const vtM=html.match(/Valor\s*total\s*R\$[:\s]*([\d.,]+)/i); if(vtM)set('tx_total_value',parseBR(vtM[1])||'0');
+    const dcM=html.match(/Descontos?\s*R\$[:\s]*([\d.,]+)/i); if(dcM)set('tx_discounts',parseBR(dcM[1])||'0');
+    const vpM=html.match(/Valor\s*a\s*pagar\s*R\$[:\s]*([\d.,]+)/i);
+    if(vpM){const v=parseBR(vpM[1]);if(v){set('tx_amount_due',v);set('tx_amount_paid',v);}}
+    else if(vtM){const v=parseBR(vtM[1]);if(v){set('tx_amount_due',v);set('tx_amount_paid',v);}}
+
+    // Forma de pagamento
+    const pgtoM = html.match(/Cart[a\u00e3]o\s*de\s*(D[e\u00e9]bito|Cr[e\u00e9]dito)/i);
+    if(pgtoM){ if(/[Dd][eé]bit/.test(pgtoM[1]))set('tx_payment_method','debito'); else set('tx_payment_method','credito'); }
+    else if(/dinheiro|esp[eé]cie/i.test(html)) set('tx_payment_method','dinheiro');
+
+    toast('Nota carregada com sucesso!', 'success');
   } catch(e) {
-    toast('QR lido, mas não foi possível buscar os dados da nota. Preencha manualmente.', 'info');
+    toast('QR lido. Nao foi possivel buscar a nota — preencha manualmente.', 'info');
   }
 
   openModal('modalAddTx');
-}
-
-function extrairDadosNFCe(html) {
-  // Parser genérico para páginas NFC-e (padrão SEFAZ — funciona na maioria dos estados)
-  const d = {};
-  const $ = s => { const m = html.match(s); return m ? m[1].trim() : null; };
-
-  // Nome do emissor — aparece em várias formas dependendo do estado
-  d.nomeEmissor =
-    $(/id=["']?nomeEmitente["']?[^>]*>([^<]+)/i) ||
-    $(/Razão Social[^:]*:\s*<[^>]+>([^<]+)/i) ||
-    $(/class=["']?NomeEmitente["']?[^>]*>([^<]+)/i) ||
-    $(/Emitente[^<]*<[^>]+>\s*<[^>]+>([^<\n]{3,80})/i) ||
-    $(/txtTopo["']?[^>]*>([^<]{3,80})/i) ||
-    null;
-
-  // CNPJ
-  const cnpjMatch = html.match(/CNPJ[:\s]*(\d{2}[\.\s]?\d{3}[\.\s]?\d{3}[\/\s]?\d{4}[-\s]?\d{2})/i);
-  if (cnpjMatch) d.cnpj = cnpjMatch[1].replace(/\D/g,'').replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,'$1.$2.$3/$4-$5');
-
-  // Endereço
-  d.endereco =
-    $(/id=["']?enderEmitente["']?[^>]*>([^<]+)/i) ||
-    $(/Endereço[^:]*:\s*<[^>]+>([^<]+)/i) ||
-    null;
-
-  // Número da nota
-  const nNF = html.match(/N[úu]mero[^:]*:?\s*<[^>]*>([^<]+)/i) ||
-               html.match(/nNF["']?\s*[=:]\s*["']?(\d+)/i) ||
-               html.match(/Nota Fiscal[^0-9]*(\d{6,9})/i);
-  if (nNF) d.numeroNota = nNF[1].trim().replace(/\D/g,'');
-
-  // Série
-  const serie = html.match(/S[eé]rie[^:]*:?\s*<[^>]*>([^<]+)/i) ||
-                html.match(/serie["']?\s*[=:]\s*["']?(\d+)/i);
-  if (serie) d.serie = serie[1].trim().replace(/\D/g,'');
-
-  // Data de emissão — converte dd/mm/aaaa → aaaa-mm-dd
-  const dataM = html.match(/Data.*?Emiss[aã]o[^:]*:?\s*<[^>]*>([^<]+)/i) ||
-                html.match(/(\d{2}\/\d{2}\/\d{4})/);
-  if (dataM) {
-    const raw = dataM[1].trim();
-    const pt = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if (pt) d.dataEmissao = `${pt[3]}-${pt[2]}-${pt[1]}`;
-  }
-
-  // Valor total — procura padrões como R$ 99,90 ou vNF=99.90
-  const valM = html.match(/Valor\s+Total[^R]*R\$\s*([\d.,]+)/i) ||
-               html.match(/vNF["']?\s*[=:]\s*["']?([\d.]+)/i) ||
-               html.match(/Total\s+a\s+pagar[^R]*R\$\s*([\d.,]+)/i) ||
-               html.match(/R\$\s*([\d]{1,3}(?:[.,]\d{3})*[.,]\d{2})/);
-  if (valM) {
-    let v = valM[1].replace(/\./g,'').replace(',','.');
-    if (!isNaN(parseFloat(v))) d.valorTotal = parseFloat(v).toFixed(2);
-  }
-
-  // Total de itens
-  const itensM = html.match(/Qtd\.?\s+total\s+de\s+itens[^:]*:?\s*<[^>]*>([\d]+)/i) ||
-                 html.match(/(\d+)\s+iten/i);
-  if (itensM) d.totalItens = itensM[1].trim();
-
-  // Descontos
-  const descM = html.match(/Desconto[^R]*R\$\s*([\d.,]+)/i);
-  if (descM) { let v=descM[1].replace(/\./g,'').replace(',','.'); if(!isNaN(parseFloat(v)))d.desconto=parseFloat(v).toFixed(2); }
-
-  return d;
 }
 
 function extractFromUrl() {
