@@ -580,107 +580,101 @@ function fecharScanner() {
 }
 
 async function preencherDadosDaUrl(urlNota) {
-  const set = (id, v) => { document.getElementById(id).value = v; };
-  set('tx_emission_date', hoje());
-  set('tx_merchant_name',''); set('tx_amount_paid',''); set('tx_cnpj','');
-  set('tx_cpf',''); set('tx_invoice_number',''); set('tx_invoice_series','');
-  set('tx_total_value','0'); set('tx_amount_due','0'); set('tx_merchant_address','');
-  set('tx_total_items','0'); set('tx_discounts','0');
+  const setV = (id, v) => { if(v!==null&&v!==undefined&&String(v).trim()!=='') document.getElementById(id).value=String(v).trim(); };
+  document.getElementById('tx_emission_date').value = hoje();
+  ['tx_merchant_name','tx_amount_paid','tx_cnpj','tx_cpf','tx_invoice_number','tx_invoice_series','tx_merchant_address'].forEach(id=>document.getElementById(id).value='');
+  ['tx_total_value','tx_amount_due','tx_discounts'].forEach(id=>document.getElementById(id).value='0');
+  document.getElementById('tx_total_items').value='0';
 
-  toast('Buscando dados da nota...', 'info');
+  toast('Buscando dados da nota...','info');
 
   try {
-    // Tenta dois proxies CORS
-    let html = '';
-    const proxies = [
-      'https://api.allorigins.win/get?url=' + encodeURIComponent(urlNota),
-      'https://corsproxy.io/?' + encodeURIComponent(urlNota),
+    let html='';
+    const proxies=[
+      'https://api.allorigins.win/get?url='+encodeURIComponent(urlNota),
+      'https://corsproxy.io/?'+encodeURIComponent(urlNota),
     ];
-    for (const proxy of proxies) {
-      try {
-        const res = await fetch(proxy, { signal: AbortSignal.timeout(14000) });
-        if (proxy.includes('allorigins')) {
-          const j = await res.json(); html = j.contents || '';
-        } else {
-          html = await res.text();
-        }
-        if (html && html.length > 200) break;
-      } catch(e) { continue; }
+    for(const proxy of proxies){
+      try{
+        const res=await fetch(proxy,{signal:AbortSignal.timeout(14000)});
+        html=proxy.includes('allorigins')?((await res.json()).contents||''):(await res.text());
+        if(html&&html.length>500)break;
+      }catch(e){continue;}
     }
 
-    if (!html || html.length < 200) {
-      toast('Nao foi possivel buscar a nota. Preencha manualmente.', 'info');
-      openModal('modalAddTx'); return;
+    if(!html||html.length<500){
+      toast('Nao foi possivel buscar a nota. Preencha manualmente.','info');
+      openModal('modalAddTx');return;
     }
 
-    const parseBR = s => {
-      if (!s) return null;
-      const v = s.replace(/\./g,'').replace(',','.');
-      return isNaN(parseFloat(v)) ? null : parseFloat(v).toFixed(2);
+    const parseBR=s=>{
+      if(!s)return null;
+      const v=parseFloat(s.replace(/\./g,'').replace(',','.'));
+      return isNaN(v)?null:v.toFixed(2);
     };
 
-    // ── Nome do emissor (classe txtTopo, primeiro elemento sem CNPJ/CPF/Rua) ──
-    const nomesM = [...html.matchAll(/class=["']txtTopo["'][^>]*>([^<]{5,120})/g)];
-    for (const m of nomesM) {
-      const t = m[1].replace(/&amp;/g,'&').trim();
-      if (!/CNPJ|CPF|RUA|AV\.|AL\.|ROD\.|PC\./i.test(t)) { set('tx_merchant_name', t); break; }
+    // ── Nome: <div id="u20" class="txtTopo">NOME</div>
+    const nomeM=html.match(/id=["']u20["'][^>]*>([^<]{3,120})/i);
+    if(nomeM) setV('tx_merchant_name',nomeM[1].replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').trim());
+
+    // ── CNPJ: <div class="text"> CNPJ: XX.XXX.XXX/XXXX-XX</div>
+    const cnpjM=html.match(/CNPJ[:\s]*([\d]{2}\.[\d]{3}\.[\d]{3}\/[\d]{4}-[\d]{2})/i);
+    if(cnpjM) setV('tx_cnpj',cnpjM[1]);
+
+    // ── Endereço: <div class="text">RUA...</div>
+    const endM=html.match(/class=["']text["'][^>]*>((?:RUA|AV|AL|ROD|PC|TRAV|EST)[^<]{5,150})/i);
+    if(endM) setV('tx_merchant_address',endM[1].trim());
+
+    // ── Número, Série, Data: "Número: 626131 Série: 1 Emissão: 23/06/2026"
+    const infoM=html.match(/N[uú]mero[:\s]*([\d]+)[\s\S]{0,30}?S[eé]rie[:\s]*([\d]+)[\s\S]{0,30}?Emiss[aã]o[:\s]*([\d]{2}\/[\d]{2}\/[\d]{4})/i);
+    if(infoM){
+      setV('tx_invoice_number',infoM[1]);
+      setV('tx_invoice_series',infoM[2]);
+      const[dd,mm,aaaa]=infoM[3].split('/');
+      setV('tx_emission_date',aaaa+'-'+mm+'-'+dd);
     }
 
-    // ── CNPJ ──
-    const cnpjM = html.match(/CNPJ[:\s]*([\d]{2}\.[\d]{3}\.[\d]{3}\/[\d]{4}-[\d]{2})/i);
-    if (cnpjM) set('tx_cnpj', cnpjM[1]);
-
-    // ── Endereço (txtTopo com RUA/AV/AL etc.) ──
-    for (const m of nomesM) {
-      const t = m[1].trim();
-      if (/^(?:RUA|AV|AL|ROD|PC|TRAV|EST)/i.test(t)) { set('tx_merchant_address', t); break; }
-    }
-
-    // ── CPF consumidor ──
-    const cpfM = html.match(/CPF[:\s]*([\d]{3}\.[\d]{3}\.[\d]{3}-[\d]{2})/);
-    if (cpfM) set('tx_cpf', cpfM[1]);
-
-    // ── Número, Série e Data de Emissão ──
-    // Padrão SEFAZ-PR: "Número: 626131 Série: 1 Emissão: 23/06/2026 16:39:41"
-    const infoM = html.match(/N[uú]mero[:\s]*([\d]+)\s+S[eé]rie[:\s]*([\d]+)\s+Emiss[aã]o[:\s]*([\d]{2}\/[\d]{2}\/[\d]{4})/i);
-    if (infoM) {
-      set('tx_invoice_number', infoM[1]);
-      set('tx_invoice_series', infoM[2]);
-      const [dd, mm, aaaa] = infoM[3].split('/');
-      set('tx_emission_date', aaaa + '-' + mm + '-' + dd);
-    }
-
-    // ── Totais — padrão tabela SEFAZ: "Label:</td><td...>Valor" ──
-    const tdVal = (label) => {
-      const r = new RegExp(label + '[:\\s]*<\\/td>\\s*<td[^>]*>([\\d.,]+)', 'i');
-      const m = html.match(r);
-      return m ? parseBR(m[1]) : null;
+    // ── Totais: <label>LABEL</label><span class="totalNumb...">VALOR</span>
+    const getLinha=(labelRe)=>{
+      const r=new RegExp('<label[^>]*>'+labelRe+'<\\/label>\\s*<span[^>]*totalNumb[^>]*>([\\d.,]+)<\\/span>','i');
+      const m=html.match(r);
+      return m?parseBR(m[1]):null;
     };
 
-    const itens = html.match(/Qtd\.?\s*total\s*de\s*itens[:\s]*<\/td>\s*<td[^>]*>([\d]+)/i);
-    if (itens) set('tx_total_items', itens[1]);
+    const itensM=html.match(/<label[^>]*>Qtd\.?\s*total\s*de\s*itens:?<\/label>\s*<span[^>]*totalNumb[^>]*>([\d]+)<\/span>/i);
+    if(itensM) setV('tx_total_items',itensM[1]);
 
-    const vt = tdVal('Valor\\s*total\\s*R\\$');
-    if (vt) set('tx_total_value', vt);
+    const vt=getLinha('Valor\\s*total\\s*R\\$:?');
+    if(vt) setV('tx_total_value',vt);
 
-    const dc = tdVal('Descontos?\\s*R\\$');
-    if (dc) set('tx_discounts', dc);
+    const dc=getLinha('Descontos?\\s*R\\$:?');
+    if(dc) setV('tx_discounts',dc);
 
-    const vp = tdVal('Valor\\s*a\\s*pagar\\s*R\\$');
-    if (vp) { set('tx_amount_due', vp); set('tx_amount_paid', vp); }
-    else if (vt) { set('tx_amount_due', vt); set('tx_amount_paid', vt); }
+    const vp=getLinha('Valor\\s*a\\s*pagar\\s*R\\$:?');
+    if(vp){setV('tx_amount_due',vp);setV('tx_amount_paid',vp);}
+    else if(vt){setV('tx_amount_due',vt);setV('tx_amount_paid',vt);}
 
-    // ── Forma de pagamento ──
-    const pgM = html.match(/Cart[aã]o\s*de\s*(D[eé]bito|Cr[eé]dito)/i);
-    if (pgM) {
-      set('tx_payment_method', /[Dd][eé]bit/.test(pgM[1]) ? 'debito' : 'credito');
-    } else if (/dinheiro|esp[eé]cie/i.test(html)) {
-      set('tx_payment_method', 'dinheiro');
+    // ── Forma de pagamento: <label class="tx">Cartão de Débito 2</label>
+    const pgLabelM=html.match(/<label[^>]*class=["'][^"']*\btx\b[^"']*["'][^>]*>([^<]+)<\/label>/i);
+    if(pgLabelM){
+      const pgTxt=pgLabelM[1];
+      if(/[Dd][eé]bito/i.test(pgTxt))      setV('tx_payment_method','debito');
+      else if(/[Cc]r[eé]dito/i.test(pgTxt)) setV('tx_payment_method','credito');
+      else if(/[Dd]inheiro|[Ee]sp[eé]cie/i.test(pgTxt)) setV('tx_payment_method','dinheiro');
+    } else {
+      if(/Cart[aã]o\s*de\s*D[eé]bito/i.test(html))      setV('tx_payment_method','debito');
+      else if(/Cart[aã]o\s*de\s*Cr[eé]dito/i.test(html)) setV('tx_payment_method','credito');
+      else if(/[Dd]inheiro|[Ee]sp[eé]cie/i.test(html))   setV('tx_payment_method','dinheiro');
     }
 
-    toast('Nota carregada com sucesso!', 'success');
-  } catch(e) {
-    toast('QR lido. Nao foi possivel buscar a nota — preencha manualmente.', 'info');
+    // ── CPF: aparece no HTML estático se estiver na sessão
+    const cpfM=html.match(/CPF[:\s]*([\d]{3}\.[\d]{3}\.[\d]{3}-[\d]{2})/i);
+    if(cpfM) setV('tx_cpf',cpfM[1]);
+
+    toast('Nota carregada com sucesso!','success');
+  } catch(e){
+    console.error('Erro NFCe:',e);
+    toast('QR lido. Preencha os dados manualmente.','info');
   }
 
   openModal('modalAddTx');
