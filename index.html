@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Gestão Financeira</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --primary: #00C7D9; --primary-dark: #00A8BD;
+  --bg: #F5F5F7; --white: #fff; --border: #e5e7eb;
+  --text: #111827; --muted: #6b7280;
+  --rose: #E11D48; --indigo: #4F46E5; --emerald: #059669; --amber: #D97706;
+  --radius: 12px; --bottom-nav-h: 64px;
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+/* LOGIN */
+#loginScreen { position: fixed; inset: 0; background: linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f172a 100%); display: flex; align-items: center; justify-content: center; z-index: 999; }
+.login-card { background: white; border-radius: 20px; padding: 40px 36px; width: 400px; max-width: 95vw; box-shadow: 0 24px 64px rgba(0,0,0,.4); text-align: center; }
+.login-logo { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(135deg,#00C7D9,#4F46E5); display: inline-flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 22px; margin-bottom: 18px; }
+.login-title { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+.login-form { display: flex; flex-direction: column; gap: 12px; text-align: left; }
+.lf-group { display: flex; flex-direction: column; gap: 5px; }
+.lf-label { font-size: 12px; font-weight: 500; color: var(--muted); }
+.lf-input { height: 44px; border-radius: 10px; border: 1.5px solid var(--border); padding: 0 14px; font-size: 14px; color: var(--text); outline: none; transition: border-color .2s; width: 100%; }
+.lf-input:focus { border-color: var(--primary); }
+.lf-pw { position: relative; }
+.lf-pw input { width: 100%; padding-right: 42px; }
+.lf-pw-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--muted); font-size: 18px; padding: 0; }
+.btn-login { height: 46px; border-radius: 10px; border: none; background: linear-gradient(135deg,#00C7D9,#4F46E5); color: white; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 4px; transition: opacity .2s; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+.btn-login:hover { opacity: .9; }
+.btn-login:disabled { opacity: .6; cursor: not-allowed; }
+.login-error { background: #FFF1F2; color: var(--rose); border: 1px solid #fecdd3; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 4px; display: none; }
+.login-error.show { display: block; }
+
+/* APP */
+.app { display: flex; height: 100vh; overflow: hidden; }
+.sidebar { width: 230px; background: var(--white); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-logo { padding: 18px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.logo-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg,#00C7D9,#00A8BD); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 13px; flex-shrink: 0; }
+.sidebar-nav { flex: 1; padding: 10px; display: flex; flex-direction: column; gap: 3px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; user-select: none; }
+.nav-item:hover { background: #f3f4f6; color: var(--text); }
+.nav-item.active { background: #E0F7FA; color: var(--primary-dark); font-weight: 500; }
+.nav-item i { font-size: 18px; }
+.nav-admin { display: none; }
+.sidebar-footer { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+.user-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; background: #f3f4f6; }
+.user-avatar { width: 30px; height: 30px; border-radius: 50%; background: linear-gradient(135deg,#00C7D9,#4F46E5); display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+.user-details { flex: 1; min-width: 0; }
+.user-name { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 10px; color: var(--muted); }
+.btn-logout { padding: 4px 6px; border-radius: 6px; border: 1px solid var(--border); background: white; color: var(--muted); cursor: pointer; font-size: 12px; flex-shrink: 0; transition: all .15s; }
+.btn-logout:hover { background: #FFF1F2; color: var(--rose); }
+.db-status { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px; background: #f3f4f6; font-size: 12px; color: var(--muted); }
+.db-dot { width: 8px; height: 8px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+.db-dot.ok { background: var(--emerald); }
+.db-dot.err { background: var(--rose); }
+.db-dot.spin { background: var(--amber); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* BOTTOM NAV */
+.bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; background: var(--white); border-top: 1px solid var(--border); height: var(--bottom-nav-h); }
+.bottom-nav-inner { display: flex; height: 100%; }
+.bnav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: var(--muted); font-size: 10px; border: none; background: none; padding: 0; }
+.bnav-item i { font-size: 22px; }
+.bnav-item.active { color: var(--primary-dark); }
+.bnav-item.active i { color: var(--primary); }
+.bnav-admin { display: none; }
+
+/* QR SCANNER MODAL */
+.qr-scanner-modal { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+.qr-scanner-modal.hidden { display: none; }
+.qr-video-wrap { position: relative; width: 100%; max-width: 380px; border-radius: 16px; overflow: hidden; background: #000; }
+#qrVideo { width: 100%; display: block; }
+.qr-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.qr-frame { width: 200px; height: 200px; border: 3px solid var(--primary); border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0,0,0,.4); animation: qrpulse 2s ease-in-out infinite; }
+@keyframes qrpulse { 0%,100%{border-color:#00C7D9} 50%{border-color:#4F46E5} }
+.qr-scan-line { position: absolute; left: calc(50% - 100px); width: 200px; height: 2px; background: linear-gradient(90deg, transparent, #00C7D9, transparent); animation: scanline 1.8s ease-in-out infinite; }
+@keyframes scanline { 0%{top:calc(50% - 100px)} 50%{top:calc(50% + 98px)} 100%{top:calc(50% - 100px)} }
+.qr-scanner-label { color: white; font-size: 14px; margin-top: 18px; text-align: center; }
+.qr-scanner-hint { color: #aaa; font-size: 12px; margin-top: 6px; text-align: center; }
+.qr-status { color: var(--primary); font-size: 13px; margin-top: 8px; min-height: 18px; text-align: center; }
+.qr-cancel-btn { margin-top: 20px; padding: 12px 36px; border-radius: 10px; border: none; background: rgba(255,255,255,.15); color: white; font-size: 14px; cursor: pointer; }
+.qr-trigger { width: 100%; padding: 22px; border: 2px dashed #00C7D960; border-radius: 12px; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; transition: background .15s; }
+.qr-trigger:hover, .qr-trigger:active { background: #E0F7FA20; }
+.qr-trigger i { font-size: 42px; color: var(--primary); }
+.qr-trigger span { font-size: 13px; color: var(--muted); text-align: center; }
+.qr-hint-box { margin-top: 8px; font-size: 11px; color: var(--muted); background: #f3f4f6; border-radius: 8px; padding: 8px 12px; }
+
+/* MAIN */
+.main { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.page { display: none; flex-direction: column; gap: 16px; }
+.page.active { display: flex; }
+.page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.page-header-left { display: flex; align-items: center; gap: 12px; }
+.page-icon { width: 40px; height: 40px; border-radius: 10px; background: #E0F7FA; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.page-icon i { font-size: 20px; color: var(--primary); }
+.page-icon.indigo { background: #EEF2FF; } .page-icon.indigo i { color: var(--indigo); }
+.page-icon.rose { background: #FFF1F2; } .page-icon.rose i { color: var(--rose); }
+.page-title { font-size: 18px; font-weight: 600; }
+.page-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.card-title { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; }
+.metric { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.metric-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.metric-badge { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.metric-badge i { font-size: 16px; }
+.metric-label { font-size: 11px; color: var(--muted); font-weight: 500; }
+.metric-value { font-size: 18px; font-weight: 600; }
+.bg-rose{background:#FFF1F2;} .bg-rose i{color:var(--rose);}
+.bg-indigo{background:#EEF2FF;} .bg-indigo i{color:var(--indigo);}
+.bg-cyan{background:#E0F7FA;} .bg-cyan i{color:var(--primary-dark);}
+.bg-emerald{background:#ECFDF5;} .bg-emerald i{color:var(--emerald);}
+.text-rose{color:var(--rose);} .text-indigo{color:var(--indigo);}
+.text-cyan{color:var(--primary-dark);} .text-emerald{color:var(--emerald);}
+.filter-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.filter-label { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+select, input[type=text], input[type=number], input[type=date], input[type=email], input[type=password] { font-size: 12px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--white); color: var(--text); height: 32px; outline: none; }
+select:focus, input:focus { border-color: var(--primary); }
+.tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+.tab-btn { padding: 6px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--muted); display: flex; align-items: center; gap: 5px; transition: all .15s; }
+.tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+.tab-btn:hover:not(.active) { background: #f3f4f6; }
+.btn { padding: 7px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid var(--border); background: var(--white); color: var(--text); display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+.btn:hover { background: #f3f4f6; }
+.btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-danger { color: var(--rose); } .btn-danger:hover { background: #FFF1F2; }
+.btn-emerald { background: var(--emerald); color: white; border-color: var(--emerald); }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-icon { padding: 5px; border-radius: 7px; }
+.url-row { display: flex; gap: 8px; }
+.url-row input { flex: 1; height: 36px; }
+.tx-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tx-table th { text-align: left; padding: 8px 10px; color: var(--muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--border); }
+.tx-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.tx-table tr:last-child td { border-bottom: none; }
+.tx-table tr:hover td { background: #E0F7FA20; }
+.badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.badge-indigo{background:#EEF2FF;color:var(--indigo);}
+.badge-cyan{background:#E0F7FA;color:#0078A8;}
+.badge-emerald{background:#ECFDF5;color:var(--emerald);}
+.badge-amber{background:#FFFBEB;color:var(--amber);}
+.progress-bar { height: 6px; background: #E0F7FA; border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg,#00C7D9,#059669); border-radius: 4px; transition: width .4s; }
+.expense-item { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 6px; }
+.expense-item.paid { background: #ECFDF510; border-color: #A7F3D0; }
+.check-box { width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s; }
+.check-box.done { background: #10B981; border-color: #10B981; }
+.check-box.done i { font-size: 14px; color: white; display: block; }
+.check-box:not(.done) i { display: none; }
+.summary-box { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.summary-val { font-size: 24px; font-weight: 700; }
+.info-box { border-radius: 8px; padding: 8px 10px; }
+.info-box p:first-child { font-size: 10px; color: var(--muted); }
+.info-box p:last-child { font-size: 13px; font-weight: 600; }
+.merchant-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.pie-wrap { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.pie-legend { display: flex; flex-direction: column; gap: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.legend-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.empty { text-align: center; padding: 32px; color: var(--muted); font-size: 13px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 100; display: flex; align-items: flex-end; justify-content: center; }
+.modal { background: var(--white); border-radius: 16px 16px 0 0; padding: 24px; width: 100%; max-width: 560px; box-shadow: 0 -4px 40px rgba(0,0,0,.15); max-height: 92vh; overflow-y: auto; }
+.modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.modal-footer { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 12px; color: var(--muted); }
+.form-group input, .form-group select { width: 100%; height: 36px; }
+.form-group.full { grid-column: span 2; }
+.toast-area { position: fixed; bottom: calc(var(--bottom-nav-h) + 8px); right: 16px; z-index: 600; display: flex; flex-direction: column; gap: 8px; }
+.toast { background: var(--text); color: white; padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; transform: translateY(10px); transition: all .25s; max-width: 300px; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.success { background: var(--emerald); }
+.toast.error { background: var(--rose); }
+.toast.info { background: var(--indigo); }
+.users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.users-table th { text-align: left; padding: 8px 10px; color: var(--muted); font-weight: 500; font-size: 12px; border-bottom: 1px solid var(--border); }
+.users-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.users-table tr:last-child td { border-bottom: none; }
+.alert { border-radius: 8px; padding: 10px 14px; font-size: 12px; margin-bottom: 12px; }
+.alert-amber { background: #FFFBEB; color: #92400e; border: 1px solid #fde68a; }
+.alert-cyan { background: #E0F7FA; color: #0078A8; border: 1px solid #a5f3fc; }
+
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .bottom-nav { display: block; }
+  .main { padding: 16px; padding-bottom: calc(var(--bottom-nav-h) + 16px); height: 100vh; overflow-y: auto; }
+  .app { flex-direction: column; }
+  .grid-4 { grid-template-columns: repeat(2,1fr); }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: span 1; }
+  .toast-area { bottom: calc(var(--bottom-nav-h) + 8px); right: 12px; left: 12px; }
+  .toast { max-width: 100%; }
+  .pie-wrap { justify-content: center; }
+}
+</style>
+</head>
+<body>
+
+<!-- QR SCANNER MODAL -->
+<div id="qrScannerModal" class="qr-scanner-modal hidden">
+  <div class="qr-video-wrap">
+    <video id="qrVideo" playsinline muted autoplay></video>
+    <div class="qr-overlay">
+      <div class="qr-frame"></div>
+      <div class="qr-scan-line"></div>
+    </div>
+  </div>
+  <p class="qr-scanner-label">Aponte o QR Code da nota para o quadro</p>
+  <p class="qr-scanner-hint">Leitura automática ao detectar o código</p>
+  <p class="qr-status" id="qrStatus">Iniciando câmera...</p>
+  <button class="qr-cancel-btn" onclick="fecharScanner()"><i class="ti ti-x"></i> Cancelar</button>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">GF</div>
+    <p class="login-title">Gestão Financeira</p>
+    <p class="login-sub">Acesse com seu e-mail e senha</p>
+    <div class="login-form">
+      <div class="lf-group"><label class="lf-label">E-mail</label><input class="lf-input" type="email" id="loginEmail" placeholder="seu@email.com" onkeydown="if(event.key==='Enter')fazerLogin()" /></div>
+      <div class="lf-group"><label class="lf-label">Senha</label>
+        <div class="lf-pw">
+          <input class="lf-input" type="password" id="loginSenha" placeholder="••••••••" onkeydown="if(event.key==='Enter')fazerLogin()" />
+          <button class="lf-pw-toggle" onclick="toggleSenha()" tabindex="-1"><i class="ti ti-eye" id="iconOlho"></i></button>
+        </div>
+      </div>
+      <div class="login-error" id="loginErro"></div>
+      <button class="btn-login" id="btnLogin" onclick="fazerLogin()"><i class="ti ti-login"></i> Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="appShell" style="display:none">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">GF</div>
+      <div><p style="font-size:13px;font-weight:600">Gestão Financeira</p><p style="font-size:11px;color:var(--muted)">Controle pessoal</p></div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showPage('lancamentos',this)"><i class="ti ti-scan"></i> Lançamentos</div>
+      <div class="nav-item" onclick="showPage('gestao',this)"><i class="ti ti-wallet"></i> Gestão de Gastos</div>
+      <div class="nav-item" onclick="showPage('consolidado',this)"><i class="ti ti-chart-bar"></i> Consolidado</div>
+      <div class="nav-item nav-admin" id="navAdmin" onclick="showPage('admin',this)"><i class="ti ti-shield-check"></i> Administração</div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="user-avatar" id="userAvatar">?</div>
+        <div class="user-details"><p class="user-name" id="userName">—</p><p class="user-role" id="userRole">—</p></div>
+        <button class="btn-logout" onclick="logout()"><i class="ti ti-logout"></i></button>
+      </div>
+      <div class="db-status"><div class="db-dot" id="dbDot"></div><span id="dbStatusText">Não configurado</span></div>
+    </div>
+  </aside>
+
+  <nav class="bottom-nav">
+    <div class="bottom-nav-inner">
+      <button class="bnav-item active" id="bnav-lancamentos" onclick="showPage('lancamentos',null,'lancamentos')"><i class="ti ti-scan"></i><span>Lançamentos</span></button>
+      <button class="bnav-item" id="bnav-gestao" onclick="showPage('gestao',null,'gestao')"><i class="ti ti-wallet"></i><span>Gastos</span></button>
+      <button class="bnav-item" id="bnav-consolidado" onclick="showPage('consolidado',null,'consolidado')"><i class="ti ti-chart-bar"></i><span>Resumo</span></button>
+      <button class="bnav-item bnav-admin" id="bnav-admin" onclick="showPage('admin',null,'admin')"><i class="ti ti-shield-check"></i><span>Admin</span></button>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- LANÇAMENTOS -->
+    <div id="page-lancamentos" class="page active">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-icon"><i class="ti ti-scan"></i></div>
+          <div><p class="page-title">Lançamentos</p><p class="page-sub">Registre transações</p></div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modalAddTx')"><i class="ti ti-plus"></i> Nova</button>
+      </div>
+      <div class="card">
+        <p class="card-title">Registrar nota fiscal</p>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="setTab(this,'tabCamera')"><i class="ti ti-camera"></i> Câmera ao vivo</button>
+          <button class="tab-btn" onclick="setTab(this,'tabUrl')"><i class="ti ti-link"></i> Colar URL</button>
+        </div>
+        <div id="tabCamera">
+          <button class="qr-trigger" onclick="abrirScanner()">
+            <i class="ti ti-qrcode"></i>
+            <span>Toque para escanear o QR Code da nota</span>
+          </button>
+          <p class="qr-hint-box">💡 A câmera abre em tela cheia. Aponte o QR Code para o quadro e aguarde a leitura automática.</p>
+        </div>
+        <div id="tabUrl" style="display:none">
+          <div class="url-row">
+            <input type="text" id="urlInput" placeholder="Cole a URL da nota fiscal aqui..." />
+            <button class="btn btn-primary" onclick="extractFromUrl()"><i class="ti ti-download"></i> Usar</button>
+          </div>
+        </div>
+      </div>
+      <div class="filter-row">
+        <span class="filter-label"><i class="ti ti-filter"></i></span>
+        <select id="filterTxMonth" onchange="renderTransactions()"><option value="all">Todos os meses</option></select>
+        <select id="filterTxPayment" onchange="renderTransactions()">
+          <option value="all">Todos</option><option value="credito">Crédito</option>
+          <option value="debito">Débito</option><option value="dinheiro">Dinheiro</option>
+        </select>
+      </div>
+      <div class="grid-4" id="txSummaryCards"></div>
+      <div class="card" id="topMerchantsCard" style="display:none">
+        <p class="card-title" style="text-transform:uppercase;font-size:11px;letter-spacing:.06em;color:var(--muted)">Maiores gastos</p>
+        <div id="topMerchants"></div>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <p class="card-title" style="margin:0">Histórico</p>
+          <span id="txCount" style="font-size:12px;color:var(--muted)">0 registros</span>
+        </div>
+        <div id="txTableWrap"></div>
+      </div>
+    </div>
+
+    <!-- GESTÃO -->
+    <div id="page-gestao" class="page">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-icon"><i class="ti ti-wallet"></i></div>
+          <div><p class="page-title">Gestão de Gastos</p><p class="page-sub">Despesas fixas, parceladas e entradas</p></div>
+        </div>
+        <select id="filterGestaoMonth" onchange="renderGestao()"></select>
+      </div>
+      <div class="grid-3" id="gestaoSummary"></div>
+      <div class="tabs">
+        <button class="tab-btn active" onclick="setGestaoTab(this,'tabExpenses')">Despesas</button>
+        <button class="tab-btn" onclick="setGestaoTab(this,'tabIncome')">Entradas</button>
+      </div>
+      <div id="tabExpenses">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-primary" onclick="openModal('modalAddExpense')"><i class="ti ti-plus"></i> Nova Despesa</button>
+        </div>
+        <div class="card" style="margin-bottom:12px"><p class="card-title">Custos Fixos</p><div id="expensesFixed"></div></div>
+        <div class="card"><p class="card-title">Parcelados / Empréstimos</p><div id="expensesInstallment"></div></div>
+      </div>
+      <div id="tabIncome" style="display:none">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+          <button class="btn btn-emerald" onclick="openModal('modalAddIncome')"><i class="ti ti-plus"></i> Nova Entrada</button>
+        </div>
+        <div class="card"><p class="card-title">Entradas do Mês</p><div id="incomeList"></div></div>
+      </div>
+    </div>
+
+    <!-- CONSOLIDADO -->
+    <div id="page-consolidado" class="page">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-icon indigo"><i class="ti ti-chart-bar"></i></div>
+          <div><p class="page-title">Consolidado</p><p class="page-sub">Visão geral</p></div>
+        </div>
+        <select id="filterConsolidadoMonth" onchange="renderConsolidado()"><option value="all">Todos</option></select>
+      </div>
+      <div class="grid-3" id="consolidadoSummary"></div>
+      <div class="grid-2">
+        <div class="card"><p class="card-title">Tendência (6 meses)</p><canvas id="barChart" height="160"></canvas></div>
+        <div class="card"><p class="card-title">Por Pagamento</p>
+          <div class="pie-wrap"><canvas id="pieChart" width="120" height="120"></canvas><div class="pie-legend" id="pieLegend"></div></div>
+        </div>
+      </div>
+      <div class="card"><p class="card-title">Distribuição de Gastos</p>
+        <div class="pie-wrap"><canvas id="pie2Chart" width="120" height="120"></canvas><div class="pie-legend" id="pie2Legend"></div></div>
+      </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="page-admin" class="page">
+      <div class="page-header">
+        <div class="page-header-left">
+          <div class="page-icon rose"><i class="ti ti-shield-check"></i></div>
+          <div><p class="page-title">Administração</p><p class="page-sub">Gerencie acessos</p></div>
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modalAddUser')"><i class="ti ti-user-plus"></i> Adicionar</button>
+      </div>
+      <div class="alert alert-cyan"><i class="ti ti-info-circle"></i> Usuários gravados na aba <strong>Logins</strong> da planilha.</div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <p class="card-title" style="margin:0">Usuários</p>
+          <span id="usersCount" style="font-size:12px;color:var(--muted)">0 usuários</span>
+        </div>
+        <div id="usersTableWrap"><div class="empty">Nenhum usuário no cache local</div></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL Nova Transação -->
+<div id="modalAddTx" class="modal-overlay" style="display:none" onclick="closeModalOutside(event,'modalAddTx')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3><i class="ti ti-scan" style="color:var(--primary)"></i> Nova Transação</h3>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome do emissor *</label><input id="tx_merchant_name" type="text" placeholder="Ex: Supermercado Extra" /></div>
+      <div class="form-group"><label>CNPJ</label><input id="tx_cnpj" type="text" /></div>
+      <div class="form-group"><label>CPF</label><input id="tx_cpf" type="text" /></div>
+      <div class="form-group full"><label>Endereço</label><input id="tx_merchant_address" type="text" /></div>
+      <div class="form-group"><label>Qtd. itens</label><input id="tx_total_items" type="number" value="0" /></div>
+      <div class="form-group"><label>Valor total R$</label><input id="tx_total_value" type="number" step="0.01" value="0" /></div>
+      <div class="form-group"><label>Descontos R$</label><input id="tx_discounts" type="number" step="0.01" value="0" /></div>
+      <div class="form-group"><label>Valor a pagar R$</label><input id="tx_amount_due" type="number" step="0.01" value="0" /></div>
+      <div class="form-group"><label>Valor pago R$ *</label><input id="tx_amount_paid" type="number" step="0.01" /></div>
+      <div class="form-group"><label>Forma de pagamento *</label>
+        <select id="tx_payment_method"><option value="credito">Crédito</option><option value="debito">Débito</option><option value="dinheiro">Dinheiro</option></select>
+      </div>
+      <div class="form-group"><label>Número da nota</label><input id="tx_invoice_number" type="text" /></div>
+      <div class="form-group"><label>Série</label><input id="tx_invoice_series" type="text" /></div>
+      <div class="form-group full"><label>Data emissão *</label><input id="tx_emission_date" type="date" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="salvarTx()"><i class="ti ti-check"></i> Confirmar</button>
+      <button class="btn" onclick="closeModal('modalAddTx')"><i class="ti ti-x"></i> Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Nova Despesa -->
+<div id="modalAddExpense" class="modal-overlay" style="display:none" onclick="closeModalOutside(event,'modalAddExpense')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3><i class="ti ti-wallet" style="color:var(--indigo)"></i> Nova Despesa</h3>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome *</label><input id="exp_name" type="text" placeholder="Ex: Aluguel, Netflix..." /></div>
+      <div class="form-group"><label>Valor mensal R$ *</label><input id="exp_amount" type="number" step="0.01" /></div>
+      <div class="form-group"><label>Tipo *</label>
+        <select id="exp_category" onchange="toggleInstallmentFields()">
+          <option value="fixo">Fixo (recorrente)</option>
+          <option value="parcelado">Parcelado / Empréstimo</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Dia vencimento</label><input id="exp_due_day" type="number" min="1" max="31" value="1" /></div>
+      <div id="installmentFields" style="display:none;grid-column:span 2">
+        <div class="form-grid" style="margin-top:8px">
+          <div class="form-group"><label>Data início</label><input id="exp_start_date" type="date" /></div>
+          <div class="form-group"><label>Data final</label><input id="exp_end_date" type="date" /></div>
+          <div class="form-group full"><label>Total de parcelas</label><input id="exp_total_installments" type="number" value="0" /></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="salvarDespesa()"><i class="ti ti-check"></i> Adicionar</button>
+      <button class="btn" onclick="closeModal('modalAddExpense')"><i class="ti ti-x"></i> Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Nova Entrada -->
+<div id="modalAddIncome" class="modal-overlay" style="display:none" onclick="closeModalOutside(event,'modalAddIncome')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3><i class="ti ti-arrow-up-right" style="color:var(--emerald)"></i> Nova Entrada</h3>
+    <div class="form-grid">
+      <div class="form-group full"><label>Descrição *</label><input id="inc_description" type="text" placeholder="Ex: Salário maio..." /></div>
+      <div class="form-group"><label>Valor R$ *</label><input id="inc_amount" type="number" step="0.01" /></div>
+      <div class="form-group"><label>Categoria</label>
+        <select id="inc_category"><option value="salario">Salário</option><option value="servico_extra">Serviço Extra</option><option value="outros">Outros</option></select>
+      </div>
+      <div class="form-group full"><label>Data *</label><input id="inc_date" type="date" /></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-emerald" onclick="salvarEntrada()"><i class="ti ti-check"></i> Adicionar</button>
+      <button class="btn" onclick="closeModal('modalAddIncome')"><i class="ti ti-x"></i> Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL Usuário -->
+<div id="modalAddUser" class="modal-overlay" style="display:none" onclick="closeModalOutside(event,'modalAddUser')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <h3><i class="ti ti-user-plus" style="color:var(--primary)"></i> Adicionar Usuário</h3>
+    <div class="alert alert-amber"><i class="ti ti-lock"></i> Senha gravada na aba <strong>Logins</strong>. Use senhas exclusivas.</div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Nome *</label><input id="nu_nome" type="text" /></div>
+      <div class="form-group full"><label>E-mail *</label><input id="nu_email" type="email" /></div>
+      <div class="form-group"><label>Senha *</label><input id="nu_senha" type="text" /></div>
+      <div class="form-group"><label>Perfil *</label>
+        <select id="nu_perfil"><option value="Usuário">Usuário</option><option value="Administrador">Administrador</option></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="adicionarUsuario()"><i class="ti ti-check"></i> Gravar</button>
+      <button class="btn" onclick="closeModal('modalAddUser')"><i class="ti ti-x"></i> Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-area" id="toastArea"></div>
+<canvas id="qrCanvas" style="display:none"></canvas>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxLFSyVY6NBxQq8tW60esZUvM6iDeiO8vCoh_2ZnYNHrcmvChcdZdsYg9-Cx9Asf2PS/exec';
+const SESSION_KEY = 'gf_session';
+let currentUser = null;
+function getSession()   { try{return JSON.parse(sessionStorage.getItem(SESSION_KEY));}catch{return null;} }
+function setSession(u)  { sessionStorage.setItem(SESSION_KEY,JSON.stringify(u)); }
+function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
+
+// ═══════════════════════════════════
+// QR SCANNER AO VIVO (jsQR + canvas)
+// ═══════════════════════════════════
+let qrStream = null;
+let qrRafId  = null;
+let scannerAberto = false;
+
+async function abrirScanner() {
+  const modal  = document.getElementById('qrScannerModal');
+  const video  = document.getElementById('qrVideo');
+  const status = document.getElementById('qrStatus');
+
+  modal.classList.remove('hidden');
+  scannerAberto = true;
+  status.textContent = 'Iniciando câmera...';
+
+  // Para stream anterior se existir
+  pararStream();
+
+  try {
+    // Prefere câmera traseira
+    const constraints = { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } };
+    qrStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = qrStream;
+    video.play();
+    status.textContent = 'Aponte o QR Code para o quadro...';
+    qrRafId = requestAnimationFrame(tickQR);
+  } catch(err) {
+    fecharScanner();
+    if (err.name === 'NotAllowedError') {
+      toast('Permissão de câmera negada. Permita nas configurações do navegador.', 'error');
+    } else {
+      toast('Câmera indisponível: ' + err.message, 'error');
+    }
+  }
+}
+
+function tickQR() {
+  if (!scannerAberto) return;
+  const video  = document.getElementById('qrVideo');
+  const canvas = document.getElementById('qrCanvas');
+  const ctx    = canvas.getContext('2d');
+
+  if (video.readyState === video.HAVE_ENOUGH_DATA) {
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+    if (code && code.data) {
+      if (navigator.vibrate) navigator.vibrate(80);
+      fecharScanner();
+      preencherDadosDaUrl(code.data);
+      return;
+    }
+  }
+  qrRafId = requestAnimationFrame(tickQR);
+}
+
+function pararStream() {
+  if (qrRafId) { cancelAnimationFrame(qrRafId); qrRafId = null; }
+  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+  const video = document.getElementById('qrVideo');
+  if (video.srcObject) { video.srcObject = null; }
+}
+
+function fecharScanner() {
+  scannerAberto = false;
+  pararStream();
+  document.getElementById('qrScannerModal').classList.add('hidden');
+}
+
+async function preencherDadosDaUrl(urlNota) {
+  const set = (id, v) => { document.getElementById(id).value = v; };
+  set('tx_emission_date', hoje());
+  set('tx_merchant_name',''); set('tx_amount_paid',''); set('tx_cnpj','');
+  set('tx_cpf',''); set('tx_invoice_number',''); set('tx_invoice_series','');
+  set('tx_total_value','0'); set('tx_amount_due','0'); set('tx_merchant_address','');
+  set('tx_total_items','0'); set('tx_discounts','0');
+
+  toast('Buscando dados da nota...', 'info');
+
+  try {
+    // Tenta dois proxies CORS
+    let html = '';
+    const proxies = [
+      'https://api.allorigins.win/get?url=' + encodeURIComponent(urlNota),
+      'https://corsproxy.io/?' + encodeURIComponent(urlNota),
+    ];
+    for (const proxy of proxies) {
+      try {
+        const res = await fetch(proxy, { signal: AbortSignal.timeout(14000) });
+        if (proxy.includes('allorigins')) {
+          const j = await res.json(); html = j.contents || '';
+        } else {
+          html = await res.text();
+        }
+        if (html && html.length > 200) break;
+      } catch(e) { continue; }
+    }
+
+    if (!html || html.length < 200) {
+      toast('Nao foi possivel buscar a nota. Preencha manualmente.', 'info');
+      openModal('modalAddTx'); return;
+    }
+
+    const parseBR = s => {
+      if (!s) return null;
+      const v = s.replace(/\./g,'').replace(',','.');
+      return isNaN(parseFloat(v)) ? null : parseFloat(v).toFixed(2);
+    };
+
+    // ── Nome do emissor (classe txtTopo, primeiro elemento sem CNPJ/CPF/Rua) ──
+    const nomesM = [...html.matchAll(/class=["']txtTopo["'][^>]*>([^<]{5,120})/g)];
+    for (const m of nomesM) {
+      const t = m[1].replace(/&amp;/g,'&').trim();
+      if (!/CNPJ|CPF|RUA|AV\.|AL\.|ROD\.|PC\./i.test(t)) { set('tx_merchant_name', t); break; }
+    }
+
+    // ── CNPJ ──
+    const cnpjM = html.match(/CNPJ[:\s]*([\d]{2}\.[\d]{3}\.[\d]{3}\/[\d]{4}-[\d]{2})/i);
+    if (cnpjM) set('tx_cnpj', cnpjM[1]);
+
+    // ── Endereço (txtTopo com RUA/AV/AL etc.) ──
+    for (const m of nomesM) {
+      const t = m[1].trim();
+      if (/^(?:RUA|AV|AL|ROD|PC|TRAV|EST)/i.test(t)) { set('tx_merchant_address', t); break; }
+    }
+
+    // ── CPF consumidor ──
+    const cpfM = html.match(/CPF[:\s]*([\d]{3}\.[\d]{3}\.[\d]{3}-[\d]{2})/);
+    if (cpfM) set('tx_cpf', cpfM[1]);
+
+    // ── Número, Série e Data de Emissão ──
+    // Padrão SEFAZ-PR: "Número: 626131 Série: 1 Emissão: 23/06/2026 16:39:41"
+    const infoM = html.match(/N[uú]mero[:\s]*([\d]+)\s+S[eé]rie[:\s]*([\d]+)\s+Emiss[aã]o[:\s]*([\d]{2}\/[\d]{2}\/[\d]{4})/i);
+    if (infoM) {
+      set('tx_invoice_number', infoM[1]);
+      set('tx_invoice_series', infoM[2]);
+      const [dd, mm, aaaa] = infoM[3].split('/');
+      set('tx_emission_date', aaaa + '-' + mm + '-' + dd);
+    }
+
+    // ── Totais — padrão tabela SEFAZ: "Label:</td><td...>Valor" ──
+    const tdVal = (label) => {
+      const r = new RegExp(label + '[:\\s]*<\\/td>\\s*<td[^>]*>([\\d.,]+)', 'i');
+      const m = html.match(r);
+      return m ? parseBR(m[1]) : null;
+    };
+
+    const itens = html.match(/Qtd\.?\s*total\s*de\s*itens[:\s]*<\/td>\s*<td[^>]*>([\d]+)/i);
+    if (itens) set('tx_total_items', itens[1]);
+
+    const vt = tdVal('Valor\\s*total\\s*R\\$');
+    if (vt) set('tx_total_value', vt);
+
+    const dc = tdVal('Descontos?\\s*R\\$');
+    if (dc) set('tx_discounts', dc);
+
+    const vp = tdVal('Valor\\s*a\\s*pagar\\s*R\\$');
+    if (vp) { set('tx_amount_due', vp); set('tx_amount_paid', vp); }
+    else if (vt) { set('tx_amount_due', vt); set('tx_amount_paid', vt); }
+
+    // ── Forma de pagamento ──
+    const pgM = html.match(/Cart[aã]o\s*de\s*(D[eé]bito|Cr[eé]dito)/i);
+    if (pgM) {
+      set('tx_payment_method', /[Dd][eé]bit/.test(pgM[1]) ? 'debito' : 'credito');
+    } else if (/dinheiro|esp[eé]cie/i.test(html)) {
+      set('tx_payment_method', 'dinheiro');
+    }
+
+    toast('Nota carregada com sucesso!', 'success');
+  } catch(e) {
+    toast('QR lido. Nao foi possivel buscar a nota — preencha manualmente.', 'info');
+  }
+
+  openModal('modalAddTx');
+}
+
+function extractFromUrl() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+  preencherDadosDaUrl(url);
+}
+
+// ═══════════════════════════════════
+// LOGIN
+// ═══════════════════════════════════
+function toggleSenha() {
+  const i=document.getElementById('loginSenha'), ic=document.getElementById('iconOlho');
+  if(i.type==='password'){i.type='text';ic.className='ti ti-eye-off';}else{i.type='password';ic.className='ti ti-eye';}
+}
+async function fazerLogin() {
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  const senha=document.getElementById('loginSenha').value;
+  const btn=document.getElementById('btnLogin');
+  document.getElementById('loginErro').classList.remove('show');
+  if(!email||!senha){mostrarErroLogin('Preencha e-mail e senha.');return;}
+  btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Verificando...';
+  try {
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({action:'login',email,senha})});
+    const json=await res.json();
+    if(json.success){currentUser={email:json.usuario.email,nome:json.usuario.nome,perfil:json.usuario.perfil};setSession(currentUser);abrirApp();}
+    else mostrarErroLogin(json.message||'E-mail ou senha incorretos.');
+  } catch(e){mostrarErroLogin('Erro de conexão.');}
+  finally{btn.disabled=false;btn.innerHTML='<i class="ti ti-login"></i> Entrar';}
+}
+function mostrarErroLogin(msg){const el=document.getElementById('loginErro');el.textContent=msg;el.classList.add('show');}
+function abrirApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appShell').style.display='flex';
+  document.getElementById('userName').textContent=currentUser.nome||currentUser.email;
+  document.getElementById('userRole').textContent=currentUser.perfil==='Administrador'?'👑 Administrador':'👤 Usuário';
+  document.getElementById('userAvatar').textContent=(currentUser.nome||currentUser.email)[0].toUpperCase();
+  if(currentUser.perfil==='Administrador'){document.getElementById('navAdmin').style.display='flex';document.getElementById('bnav-admin').style.display='flex';}
+  testarConexao(); init();
+  toast('Bem-vindo, '+(currentUser.nome?.split(' ')[0]||currentUser.email)+'!','success');
+}
+function logout(){
+  fecharScanner(); clearSession(); currentUser=null;
+  document.getElementById('appShell').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('loginEmail').value='';document.getElementById('loginSenha').value='';
+  document.getElementById('loginErro').classList.remove('show');
+  document.getElementById('navAdmin').style.display='none';document.getElementById('bnav-admin').style.display='none';
+  document.getElementById('btnLogin').disabled=false;
+}
+
+// ═══════════════════════════════════
+// API JSONP
+// ═══════════════════════════════════
+async function apiPost(body){
+  return new Promise((resolve,reject)=>{
+    const cb='gfcb_'+Date.now(), s=document.createElement('script');
+    const url=SCRIPT_URL+'?callback='+cb+'&payload='+encodeURIComponent(JSON.stringify(body));
+    const t=setTimeout(()=>{cleanup();reject(new Error('Timeout'));},15000);
+    function cleanup(){clearTimeout(t);delete window[cb];if(s.parentNode)s.parentNode.removeChild(s);}
+    window[cb]=d=>{cleanup();resolve(d);};
+    s.onerror=()=>{cleanup();reject(new Error('Erro Apps Script'));};
+    s.src=url; document.head.appendChild(s);
+  });
+}
+async function sheetAdd(aba,row){try{const j=await apiPost({action:'add',aba,row});if(!j.success)throw new Error(j.message);return true;}catch(e){toast('Erro ao gravar: '+e.message,'error');return false;}}
+async function sheetDelete(aba,id){try{await apiPost({action:'delete',aba,id});}catch(e){console.warn(e);}}
+async function sheetUpdate(aba,id,fields){try{await apiPost({action:'update',aba,id,fields});}catch(e){console.warn(e);}}
+async function testarConexao(){
+  setDbStatus('spin','Testando...');
+  try{const j=await apiPost({action:'ping'});if(j.success)setDbStatus('ok','Planilha conectada ✓');else throw new Error(j.message);}
+  catch(e){setDbStatus('err','Erro de conexão');}
+}
+function setDbStatus(t,m){document.getElementById('dbDot').className='db-dot '+t;document.getElementById('dbStatusText').textContent=m;}
+
+// ═══════════════════════════════════
+// DB LOCAL
+// ═══════════════════════════════════
+const DB={
+  get:k=>{const all=JSON.parse(localStorage.getItem(k)||'[]');if(currentUser?.perfil==='Administrador')return all;return all.filter(i=>!i.user_email||i.user_email===currentUser?.email);},
+  getAll:k=>JSON.parse(localStorage.getItem(k)||'[]'),
+  set:(k,v)=>localStorage.setItem(k,JSON.stringify(v)),
+  uid:()=>Date.now().toString(36)+Math.random().toString(36).slice(2)
+};
+const KEYS={tx:'gf_tx',exp:'gf_exp',pay:'gf_pay',inc:'gf_inc'};
+const R=v=>'R$ '+(parseFloat(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const hoje=()=>new Date().toISOString().split('T')[0];
+const mesAtual=()=>new Date().toISOString().slice(0,7);
+function getMeses(){return Array.from({length:12},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-i);return{val:d.toISOString().slice(0,7),label:d.toLocaleDateString('pt-BR',{month:'short',year:'numeric'})};});}
+
+// ═══════════════════════════════════
+// UI
+// ═══════════════════════════════════
+function toast(msg,type='success'){
+  const a=document.getElementById('toastArea'),t=document.createElement('div');
+  t.className='toast '+type;t.textContent=msg;a.appendChild(t);
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},3500);
+}
+function showPage(name,el,bnavId){
+  if(name==='admin'&&currentUser?.perfil!=='Administrador'){toast('Acesso restrito','error');return;}
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.bnav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  if(bnavId)document.getElementById('bnav-'+bnavId)?.classList.add('active');
+  if(name==='lancamentos')renderTransactions();
+  if(name==='gestao')renderGestao();
+  if(name==='consolidado')renderConsolidado();
+  if(name==='admin')renderTabelaUsuarios();
+}
+function setTab(btn,showId){
+  btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  ['tabCamera','tabUrl'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById(showId).style.display='block';
+}
+function setGestaoTab(btn,showId){
+  btn.closest('.tabs').querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  ['tabExpenses','tabIncome'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById(showId).style.display='block';
+}
+function openModal(id){
+  if(id==='modalAddTx'){document.getElementById('tx_emission_date').value=hoje();document.getElementById('tx_merchant_name').value='';document.getElementById('tx_amount_paid').value='';}
+  if(id==='modalAddIncome'){document.getElementById('inc_date').value=hoje();document.getElementById('inc_description').value='';document.getElementById('inc_amount').value='';}
+  if(id==='modalAddExpense'){document.getElementById('exp_name').value='';document.getElementById('exp_amount').value='';document.getElementById('exp_category').value='fixo';document.getElementById('installmentFields').style.display='none';}
+  if(id==='modalAddUser'){document.getElementById('nu_nome').value='';document.getElementById('nu_email').value='';document.getElementById('nu_senha').value='';}
+  document.getElementById(id).style.display='flex';
+}
+function closeModal(id){document.getElementById(id).style.display='none';}
+function closeModalOutside(e,id){if(e.target.id===id)closeModal(id);}
+function toggleInstallmentFields(){document.getElementById('installmentFields').style.display=document.getElementById('exp_category').value==='parcelado'?'block':'none';}
+
+// ═══════════════════════════════════
+// TRANSAÇÕES — fecha modal imediatamente, grava planilha em background
+// ═══════════════════════════════════
+async function salvarTx(){
+  const name=document.getElementById('tx_merchant_name').value.trim();
+  const paid=parseFloat(document.getElementById('tx_amount_paid').value)||0;
+  const date=document.getElementById('tx_emission_date').value;
+  if(!name||!paid||!date){toast('Preencha os campos obrigatórios (*)','error');return;}
+  const tx={id:DB.uid(),user_email:currentUser.email,merchant_name:name,cpf:document.getElementById('tx_cpf').value,merchant_address:document.getElementById('tx_merchant_address').value,cnpj:document.getElementById('tx_cnpj').value,total_items:parseFloat(document.getElementById('tx_total_items').value)||0,total_value:parseFloat(document.getElementById('tx_total_value').value)||0,discounts:parseFloat(document.getElementById('tx_discounts').value)||0,amount_due:parseFloat(document.getElementById('tx_amount_due').value)||0,payment_method:document.getElementById('tx_payment_method').value,amount_paid:paid,invoice_number:document.getElementById('tx_invoice_number').value,invoice_series:document.getElementById('tx_invoice_series').value,emission_date:date};
+  const all=DB.getAll(KEYS.tx);all.unshift(tx);DB.set(KEYS.tx,all);
+  closeModal('modalAddTx');
+  toast('Lançamento salvo ✓');
+  renderTransactions();
+  sheetAdd('Transações',[tx.id,tx.emission_date,tx.merchant_name,tx.cnpj,tx.cpf,tx.merchant_address,tx.total_items,tx.total_value,tx.discounts,tx.amount_due,tx.payment_method,tx.amount_paid,tx.invoice_number,tx.invoice_series,'',new Date().toLocaleString('pt-BR')]);
+}
+async function deleteTx(id){
+  if(!confirm('Remover este lançamento?'))return;
+  await sheetDelete('Transações',id);
+  DB.set(KEYS.tx,DB.getAll(KEYS.tx).filter(t=>t.id!==id));
+  toast('Lançamento removido');renderTransactions();
+}
+function renderTransactions(){
+  const month=document.getElementById('filterTxMonth').value;
+  const payment=document.getElementById('filterTxPayment').value;
+  let txs=DB.get(KEYS.tx);
+  if(month!=='all')txs=txs.filter(t=>t.emission_date?.startsWith(month));
+  if(payment!=='all')txs=txs.filter(t=>t.payment_method===payment);
+  const total=txs.reduce((s,t)=>s+t.amount_paid,0);
+  const credit=txs.filter(t=>t.payment_method==='credito').reduce((s,t)=>s+t.amount_paid,0);
+  const debit=txs.filter(t=>t.payment_method==='debito').reduce((s,t)=>s+t.amount_paid,0);
+  const cash=txs.filter(t=>t.payment_method==='dinheiro').reduce((s,t)=>s+t.amount_paid,0);
+  document.getElementById('txSummaryCards').innerHTML=[
+    {label:'Total gasto',val:total,ic:'ti-trending-down',bg:'bg-rose',tc:'text-rose'},
+    {label:'Crédito',val:credit,ic:'ti-credit-card',bg:'bg-indigo',tc:'text-indigo'},
+    {label:'Débito',val:debit,ic:'ti-receipt',bg:'bg-cyan',tc:'text-cyan'},
+    {label:'Dinheiro',val:cash,ic:'ti-coin',bg:'bg-emerald',tc:'text-emerald'},
+  ].map(c=>`<div class="metric"><div class="metric-top"><div class="metric-badge ${c.bg}"><i class="ti ${c.ic}"></i></div><span class="metric-label">${c.label}</span></div><p class="metric-value ${c.tc}">${R(c.val)}</p></div>`).join('');
+  const merch={};txs.forEach(t=>{if(t.merchant_name)merch[t.merchant_name]=(merch[t.merchant_name]||0)+t.amount_paid;});
+  const top=Object.entries(merch).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const topCard=document.getElementById('topMerchantsCard');
+  if(top.length){topCard.style.display='block';const max=top[0][1];document.getElementById('topMerchants').innerHTML=top.map(([name,val],i)=>`<div class="merchant-bar"><span style="font-size:11px;color:var(--muted);width:16px">${i+1}</span><div style="flex:1"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;font-weight:500">${name}</span><span style="font-size:13px;font-weight:600;color:var(--primary-dark)">${R(val)}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${(val/max*100).toFixed(1)}%"></div></div></div></div>`).join('');}
+  else topCard.style.display='none';
+  document.getElementById('txCount').textContent=txs.length+' registros';
+  const BADGE={credito:'badge-indigo',debito:'badge-cyan',dinheiro:'badge-emerald'};
+  const LABEL={credito:'Crédito',debito:'Débito',dinheiro:'Dinheiro'};
+  const isAdmin=currentUser?.perfil==='Administrador';
+  document.getElementById('txTableWrap').innerHTML=txs.length?`<div style="overflow-x:auto"><table class="tx-table"><thead><tr><th>Data</th><th>Emissor</th><th>Pgto</th>${isAdmin?'<th>Usuário</th>':''}<th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${txs.map(t=>`<tr><td style="white-space:nowrap">${t.emission_date?new Date(t.emission_date+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</td><td style="font-weight:500;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.merchant_name}</td><td><span class="badge ${BADGE[t.payment_method]||''}">${LABEL[t.payment_method]||t.payment_method}</span></td>${isAdmin?`<td style="font-size:11px;color:var(--muted)">${t.user_email||'—'}</td>`:''}<td style="text-align:right;font-weight:600;white-space:nowrap">${R(t.amount_paid)}</td><td>${(t.user_email===currentUser?.email||isAdmin)?`<button class="btn btn-icon btn-danger btn-sm" onclick="deleteTx('${t.id}')"><i class="ti ti-trash"></i></button>`:''}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">Nenhum lançamento encontrado</div>';
+}
+
+// ═══════════════════════════════════
+// DESPESAS — fecha modal imediatamente
+// ═══════════════════════════════════
+async function salvarDespesa(){
+  const name=document.getElementById('exp_name').value.trim();
+  const amount=parseFloat(document.getElementById('exp_amount').value)||0;
+  const cat=document.getElementById('exp_category').value;
+  if(!name||!amount){toast('Preencha os campos obrigatórios','error');return;}
+  const exp={id:DB.uid(),user_email:currentUser.email,name,amount,category:cat,due_day:parseInt(document.getElementById('exp_due_day').value)||1,start_date:document.getElementById('exp_start_date').value||'',end_date:document.getElementById('exp_end_date').value||'',total_installments:parseInt(document.getElementById('exp_total_installments').value)||0};
+  const all=DB.getAll(KEYS.exp);all.push(exp);DB.set(KEYS.exp,all);
+  closeModal('modalAddExpense');
+  toast('Despesa salva ✓');
+  renderGestao();
+  sheetAdd('Despesas',[exp.id,exp.name,exp.amount,exp.category,exp.due_day,exp.start_date,exp.end_date,exp.total_installments,new Date().toLocaleString('pt-BR')]);
+}
+async function deletarDespesa(id){
+  if(!confirm('Remover esta despesa?'))return;
+  await sheetDelete('Despesas',id);
+  DB.set(KEYS.exp,DB.getAll(KEYS.exp).filter(e=>e.id!==id));
+  DB.set(KEYS.pay,DB.getAll(KEYS.pay).filter(p=>p.expense_id!==id));
+  toast('Despesa removida');renderGestao();
+}
+async function togglePagamento(expenseId,month){
+  const pays=DB.getAll(KEYS.pay);
+  const ex=pays.find(p=>p.expense_id===expenseId&&p.month===month&&p.user_email===currentUser.email);
+  const exp=DB.getAll(KEYS.exp).find(e=>e.id===expenseId);
+  if(ex){const ns=ex.status==='pago'?'nao_pago':'pago';ex.status=ns;ex.paid_date=ns==='pago'?hoje():'';DB.set(KEYS.pay,pays);await sheetUpdate('Pagamentos',ex.id,{5:ns,6:ex.paid_date});}
+  else{const pay={id:DB.uid(),user_email:currentUser.email,expense_id:expenseId,month,status:'pago',paid_date:hoje()};pays.push(pay);DB.set(KEYS.pay,pays);await sheetAdd('Pagamentos',[pay.id,expenseId,exp?.name||'',month,pay.status,pay.paid_date,new Date().toLocaleString('pt-BR')]);}
+  renderGestao();
+}
+function getStatusPag(expenseId,month){return DB.getAll(KEYS.pay).find(p=>p.expense_id===expenseId&&p.month===month&&p.user_email===currentUser?.email);}
+function getInfoParcelas(exp){if(exp.category!=='parcelado'||!exp.total_installments)return null;const paid=DB.getAll(KEYS.pay).filter(p=>p.expense_id===exp.id&&p.status==='pago'&&p.user_email===currentUser?.email).length;const rem=Math.max(0,exp.total_installments-paid);return{paid,remaining:rem,paidAmount:paid*exp.amount,remainingAmount:rem*exp.amount};}
+function renderGestao(){
+  const month=document.getElementById('filterGestaoMonth').value;
+  const expenses=DB.get(KEYS.exp),incomes=DB.get(KEYS.inc);
+  const active=expenses.filter(e=>{if(e.category==='fixo')return true;if(!e.start_date||!e.end_date)return true;return month>=e.start_date.slice(0,7)&&month<=e.end_date.slice(0,7);});
+  const fixos=active.filter(e=>e.category==='fixo'),parc=active.filter(e=>e.category==='parcelado');
+  const monthInc=incomes.filter(i=>i.date?.startsWith(month));
+  const totalIncome=monthInc.reduce((s,i)=>s+i.amount,0);
+  const totalPaid=active.reduce((s,e)=>{const p=getStatusPag(e.id,month);return s+(p?.status==='pago'?e.amount:0);},0);
+  const totalAll=active.reduce((s,e)=>s+e.amount,0),balance=totalIncome-totalPaid;
+  document.getElementById('gestaoSummary').innerHTML=`
+    <div class="summary-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="metric-badge bg-emerald" style="width:30px;height:30px;border-radius:8px"><i class="ti ti-arrow-up-right"></i></div><span style="font-size:12px;color:var(--muted);font-weight:500">Entradas</span></div><p class="summary-val text-emerald">${R(totalIncome)}</p></div>
+    <div class="summary-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="metric-badge bg-rose" style="width:30px;height:30px;border-radius:8px"><i class="ti ti-arrow-down-right"></i></div><span style="font-size:12px;color:var(--muted);font-weight:500">Saídas (pagas)</span></div><p class="summary-val text-rose">${R(totalPaid)}</p><p style="font-size:11px;color:var(--muted);margin-top:2px">Previsto: ${R(totalAll)}</p></div>
+    <div class="summary-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="metric-badge bg-cyan" style="width:30px;height:30px;border-radius:8px"><i class="ti ti-currency-dollar"></i></div><span style="font-size:12px;color:var(--muted);font-weight:500">Saldo</span></div><p class="summary-val" style="color:${balance>=0?'var(--primary-dark)':'var(--rose)'}">${R(balance)}</p></div>`;
+  document.getElementById('expensesFixed').innerHTML=fixos.length?fixos.map(e=>{const p=getStatusPag(e.id,month),paid=p?.status==='pago';return`<div class="expense-item${paid?' paid':''}"><div class="check-box${paid?' done':''}" onclick="togglePagamento('${e.id}','${month}')"><i class="ti ti-check"></i></div><div style="flex:1"><p style="font-size:13px;${paid?'text-decoration:line-through;color:var(--muted)':''}">${e.name}</p><p style="font-size:11px;color:var(--muted)">Dia ${e.due_day||'-'}</p></div><p style="font-size:13px;font-weight:600">${R(e.amount)}</p><button class="btn btn-icon btn-danger btn-sm" onclick="deletarDespesa('${e.id}')"><i class="ti ti-trash"></i></button></div>`;}).join(''):'<div class="empty">Nenhum custo fixo cadastrado</div>';
+  document.getElementById('expensesInstallment').innerHTML=parc.length?parc.map(e=>{const p=getStatusPag(e.id,month),paid=p?.status==='pago';const info=getInfoParcelas(e);const pct=info&&e.total_installments?(info.paid/e.total_installments*100).toFixed(1):0;return`<div style="border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px"><div class="expense-item" style="border:none;padding:0;margin-bottom:10px"><div class="check-box${paid?' done':''}" onclick="togglePagamento('${e.id}','${month}')"><i class="ti ti-check"></i></div><div style="flex:1"><p style="font-size:13px;${paid?'text-decoration:line-through;color:var(--muted)':''}">${e.name}</p><p style="font-size:11px;color:var(--muted)">${e.start_date||''} → ${e.end_date||''}</p></div><p style="font-size:13px;font-weight:600">${R(e.amount)}/mês</p><button class="btn btn-icon btn-danger btn-sm" onclick="deletarDespesa('${e.id}')"><i class="ti ti-trash"></i></button></div>${info?`<div class="grid-4" style="gap:8px;margin-bottom:10px"><div class="info-box" style="background:#E0F7FA"><p>Pagas</p><p style="color:var(--primary-dark)">${info.paid}/${e.total_installments}</p></div><div class="info-box" style="background:#FFF1F2"><p>Restantes</p><p style="color:var(--rose)">${info.remaining}</p></div><div class="info-box" style="background:#ECFDF5"><p>Pago R$</p><p style="color:var(--emerald)">${info.paidAmount.toFixed(2)}</p></div><div class="info-box" style="background:#FFFBEB"><p>Aberto R$</p><p style="color:var(--amber)">${info.remainingAmount.toFixed(2)}</p></div></div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`:''}</div>`;}).join(''):'<div class="empty">Nenhuma conta parcelada cadastrada</div>';
+  const CATEG={salario:'Salário',servico_extra:'Serviço Extra',outros:'Outros'};
+  document.getElementById('incomeList').innerHTML=monthInc.length?monthInc.map(inc=>`<div class="expense-item"><div class="metric-badge bg-emerald" style="width:32px;height:32px;border-radius:9px"><i class="ti ti-arrow-up-right"></i></div><div style="flex:1"><p style="font-size:13px;font-weight:500">${inc.description}</p><p style="font-size:11px;color:var(--muted)">${CATEG[inc.category]||inc.category} · ${inc.date?new Date(inc.date+'T12:00:00').toLocaleDateString('pt-BR'):'-'}</p></div><p style="font-size:13px;font-weight:600;color:var(--emerald);white-space:nowrap">+ ${R(inc.amount)}</p><button class="btn btn-icon btn-danger btn-sm" onclick="deletarEntrada('${inc.id}')"><i class="ti ti-trash"></i></button></div>`).join(''):'<div class="empty">Nenhuma entrada registrada neste mês</div>';
+}
+
+// ═══════════════════════════════════
+// ENTRADAS — fecha modal imediatamente
+// ═══════════════════════════════════
+async function salvarEntrada(){
+  const desc=document.getElementById('inc_description').value.trim();
+  const amount=parseFloat(document.getElementById('inc_amount').value)||0;
+  const date=document.getElementById('inc_date').value;
+  if(!desc||!amount||!date){toast('Preencha os campos obrigatórios','error');return;}
+  const inc={id:DB.uid(),user_email:currentUser.email,description:desc,amount,category:document.getElementById('inc_category').value,date};
+  const all=DB.getAll(KEYS.inc);all.push(inc);DB.set(KEYS.inc,all);
+  closeModal('modalAddIncome');
+  toast('Entrada salva ✓');
+  renderGestao();
+  sheetAdd('Entradas',[inc.id,inc.description,inc.amount,inc.category,inc.date,new Date().toLocaleString('pt-BR')]);
+}
+async function deletarEntrada(id){
+  if(!confirm('Remover esta entrada?'))return;
+  await sheetDelete('Entradas',id);
+  DB.set(KEYS.inc,DB.getAll(KEYS.inc).filter(i=>i.id!==id));
+  toast('Entrada removida');renderGestao();
+}
+
+// ═══════════════════════════════════
+// ADMIN
+// ═══════════════════════════════════
+function renderTabelaUsuarios(){
+  const users=JSON.parse(localStorage.getItem('gf_users_cache')||'[]');
+  document.getElementById('usersCount').textContent=users.length+' usuário(s)';
+  if(!users.length){document.getElementById('usersTableWrap').innerHTML='<div class="empty">Nenhum usuário adicionado ainda.</div>';return;}
+  const BADGE={Administrador:'badge-amber',Usuário:'badge-cyan'};
+  document.getElementById('usersTableWrap').innerHTML=`<table class="users-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th></th></tr></thead><tbody>${users.map(u=>`<tr><td style="font-weight:500">${u.nome}</td><td style="color:var(--muted);font-size:12px">${u.email}</td><td><span class="badge ${BADGE[u.perfil]||'badge-cyan'}">${u.perfil}</span></td><td>${u.email!==currentUser?.email?`<button class="btn btn-icon btn-danger btn-sm" onclick="removerUsuario('${u.email}')"><i class="ti ti-trash"></i></button>`:'<span style="font-size:11px;color:var(--muted)">você</span>'}</td></tr>`).join('')}</tbody></table>`;
+}
+async function adicionarUsuario(){
+  const nome=document.getElementById('nu_nome').value.trim(),email=document.getElementById('nu_email').value.trim().toLowerCase();
+  const senha=document.getElementById('nu_senha').value.trim(),perfil=document.getElementById('nu_perfil').value;
+  if(!nome||!email||!senha){toast('Preencha todos os campos','error');return;}
+  const ok=await sheetAdd('Logins',[email,senha,nome,perfil,'Ativo',new Date().toLocaleString('pt-BR')]);
+  if(ok){const cache=JSON.parse(localStorage.getItem('gf_users_cache')||'[]');cache.push({nome,email,perfil,data:new Date().toLocaleString('pt-BR')});localStorage.setItem('gf_users_cache',JSON.stringify(cache));closeModal('modalAddUser');toast('Usuário adicionado ✓','success');renderTabelaUsuarios();}
+}
+async function removerUsuario(email){
+  if(!confirm(`Remover acesso de ${email}?`))return;
+  await sheetDelete('Logins',email);
+  const cache=JSON.parse(localStorage.getItem('gf_users_cache')||'[]').filter(u=>u.email!==email);
+  localStorage.setItem('gf_users_cache',JSON.stringify(cache));toast('Usuário removido','success');renderTabelaUsuarios();
+}
+
+// ═══════════════════════════════════
+// CONSOLIDADO
+// ═══════════════════════════════════
+let barChart,pieChart,pie2Chart;
+function renderConsolidado(){
+  const month=document.getElementById('filterConsolidadoMonth').value;
+  const txs=DB.get(KEYS.tx),expenses=DB.get(KEYS.exp);
+  const payments=DB.getAll(KEYS.pay).filter(p=>currentUser?.perfil==='Administrador'||p.user_email===currentUser?.email);
+  const incomes=DB.get(KEYS.inc);
+  const filtTx=month==='all'?txs:txs.filter(t=>t.emission_date?.startsWith(month));
+  const filtInc=month==='all'?incomes:incomes.filter(i=>i.date?.startsWith(month));
+  const filtPay=(month==='all'?payments:payments.filter(p=>p.month===month)).filter(p=>p.status==='pago');
+  const totalTx=filtTx.reduce((s,t)=>s+t.amount_paid,0);
+  const totalExpPaid=filtPay.reduce((s,p)=>{const e=expenses.find(x=>x.id===p.expense_id);return s+(e?.amount||0);},0);
+  const totalSpent=totalTx+totalExpPaid,totalIncome=filtInc.reduce((s,i)=>s+i.amount,0),balance=totalIncome-totalSpent;
+  document.getElementById('consolidadoSummary').innerHTML=`
+    <div class="summary-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="metric-badge bg-emerald" style="width:30px;height:30px;border-radius:8px"><i class="ti ti-arrow-up-right"></i></div><span style="font-size:12px;color:var(--muted);font-weight:500">Total Entradas</span></div><p class="summary-val text-emerald">${R(totalIncome)}</p></div>
+    <div class="summary-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="metric-badge bg-rose" style="width:30px;height:30px;border-radius:8px"><i class="ti ti-arrow-down-right"></i></div><span style="font-size:12px;color:var(--muted);font-weight:500">Total Saídas</span></div><p class="summary-val text-rose">${R(totalSpent)}</p><p style="font-size:11px;color:var(--muted);margin-top:2px">Lançamentos: ${R(totalTx)} · Custos: ${R(totalExpPaid)}</p></div>
+    <div class="summary-box"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div class="metric-badge bg-cyan" style="width:30px;height:30px;border-radius:8px"><i class="ti ti-currency-dollar"></i></div><span style="font-size:12px;color:var(--muted);font-weight:500">Saldo</span></div><p class="summary-val" style="color:${balance>=0?'var(--primary-dark)':'var(--rose)'}">${R(balance)}</p></div>`;
+  const months6=Array.from({length:6},(_,i)=>{const d=new Date();d.setMonth(d.getMonth()-(5-i));const key=d.toISOString().slice(0,7),label=d.toLocaleDateString('pt-BR',{month:'short'});const mTx=DB.get(KEYS.tx).filter(t=>t.emission_date?.startsWith(key)).reduce((s,t)=>s+t.amount_paid,0);const mExp=payments.filter(p=>p.status==='pago'&&p.month===key).reduce((s,p)=>{const e=expenses.find(x=>x.id===p.expense_id);return s+(e?.amount||0);},0);const mInc=DB.get(KEYS.inc).filter(i=>i.date?.startsWith(key)).reduce((s,i)=>s+i.amount,0);return{label,gastos:mTx+mExp,entradas:mInc};});
+  if(barChart)barChart.destroy();
+  barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:months6.map(m=>m.label),datasets:[{label:'Entradas',data:months6.map(m=>m.entradas),backgroundColor:'#059669',borderRadius:4},{label:'Gastos',data:months6.map(m=>m.gastos),backgroundColor:'#E11D48',borderRadius:4}]},options:{responsive:true,plugins:{legend:{labels:{font:{size:11},color:'#6b7280',boxWidth:12}}},scales:{x:{ticks:{font:{size:11},color:'#6b7280'},grid:{display:false}},y:{ticks:{font:{size:11},color:'#6b7280',callback:v=>'R$'+(v/1000).toFixed(1)+'k'},grid:{color:'#00000010'}}}}});
+  const credit=filtTx.filter(t=>t.payment_method==='credito').reduce((s,t)=>s+t.amount_paid,0);
+  const debit=filtTx.filter(t=>t.payment_method==='debito').reduce((s,t)=>s+t.amount_paid,0);
+  const cash=filtTx.filter(t=>t.payment_method==='dinheiro').reduce((s,t)=>s+t.amount_paid,0);
+  const pieData=[{label:'Crédito',val:credit,color:'#4F46E5'},{label:'Débito',val:debit,color:'#00C7D9'},{label:'Dinheiro',val:cash,color:'#059669'}].filter(d=>d.val>0);
+  if(pieChart)pieChart.destroy();
+  pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:pieData.map(d=>d.label),datasets:[{data:pieData.map(d=>d.val),backgroundColor:pieData.map(d=>d.color),borderWidth:0}]},options:{responsive:false,plugins:{legend:{display:false}},cutout:'60%'}});
+  document.getElementById('pieLegend').innerHTML=pieData.map(d=>`<div class="legend-item"><div class="legend-dot" style="background:${d.color}"></div>${d.label} — ${R(d.val)}</div>`).join('');
+  const fixosPaid=filtPay.filter(p=>{const e=expenses.find(x=>x.id===p.expense_id);return e?.category==='fixo';}).reduce((s,p)=>{const e=expenses.find(x=>x.id===p.expense_id);return s+(e?.amount||0);},0);
+  const parPaid=filtPay.filter(p=>{const e=expenses.find(x=>x.id===p.expense_id);return e?.category==='parcelado';}).reduce((s,p)=>{const e=expenses.find(x=>x.id===p.expense_id);return s+(e?.amount||0);},0);
+  const pie2Data=[{label:'Lançamentos',val:totalTx,color:'#00C7D9'},{label:'Custos fixos',val:fixosPaid,color:'#4F46E5'},{label:'Parcelados',val:parPaid,color:'#059669'}].filter(d=>d.val>0);
+  if(pie2Chart)pie2Chart.destroy();
+  pie2Chart=new Chart(document.getElementById('pie2Chart'),{type:'doughnut',data:{labels:pie2Data.map(d=>d.label),datasets:[{data:pie2Data.map(d=>d.val),backgroundColor:pie2Data.map(d=>d.color),borderWidth:0}]},options:{responsive:false,plugins:{legend:{display:false}},cutout:'60%'}});
+  document.getElementById('pie2Legend').innerHTML=pie2Data.map(d=>`<div class="legend-item"><div class="legend-dot" style="background:${d.color}"></div>${d.label} — ${R(d.val)}</div>`).join('');
+}
+
+// ═══════════════════════════════════
+// INIT
+// ═══════════════════════════════════
+function init(){
+  const meses=getMeses();
+  ['filterTxMonth','filterConsolidadoMonth'].forEach(id=>{const sel=document.getElementById(id);while(sel.options.length>1)sel.remove(1);meses.forEach(m=>{const o=document.createElement('option');o.value=m.val;o.textContent=m.label;sel.appendChild(o);});});
+  const gs=document.getElementById('filterGestaoMonth');
+  while(gs.options.length>0)gs.remove(0);
+  meses.forEach(m=>{const o=document.createElement('option');o.value=m.val;o.textContent=m.label;if(m.val===mesAtual())o.selected=true;gs.appendChild(o);});
+  renderTransactions();
+}
+(function(){const s=getSession();if(s&&s.email){currentUser=s;abrirApp();}})();
+</script>
+</body>
+</html>
